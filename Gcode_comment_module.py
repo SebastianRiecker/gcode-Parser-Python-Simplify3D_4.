@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import pandas as pd
-from pandas.plotting import scatter_matrix
 
 '''
 Purpose:
 Gcode parser was coded to read Simplify3D (V4.0) printing setups that are nested in the gcode file (comment at the beginning)
 and convert them into a csv file for exportation into excel or further usage for analysis (pandas).
 '''
-def get_gcode_paths_names():
+def get_gcode_path_names():
     '''Asks for inputpath, returns lists: filepath, gcode_name '''
     import glob
     import os
@@ -20,42 +19,74 @@ def get_gcode_paths_names():
     name       = [x.split('.')[0] for x in filename]
     return filepath, filename, name
 
-def get_protocoll_paths_names():
-    '''Asks for inputpath, returns lists: filepath, protocoll_name '''
-    import glob,os.path
-    inputpath  = input('Ordnerpfad des Protokolls (F3P.csv)?:')
-    os.chdir(inputpath)
-    filepath   = glob.glob('./*F3P.csv')
-    filepath   = sorted(filepath)
-    filename = list(map(os.path.basename, filepath))
-    name       = [x.split('.')[0] for x in filename]
-    return filepath, filename, name
 
-def read_gcode(filepath):
-    '''reads out gcode settings - for Simplify3D, V4.0'''
+def import_gcode_printparameters(filepath):
+    '''reads out gcode settings out of comments in first lines - for Simplify3D, V4.0.
+    Due to bad protocoll form, lots of columns needed for the case, that several temperature setpoints
+    are given.'''
     import pandas as pd
-    gcode_df = pd.read_csv(filepath, sep=',', skiprows=3, nrows=192, names=list('xabcd'), comment = '|', skipinitialspace=True )
-    gcode_df = gcode_df.replace({';   ': ''}, regex=True)
-    gcode_df = gcode_df.set_index('x')
+    gcode_df = pd.read_csv(filepath, sep = ',', 
+                           skiprows = 3, 
+                           nrows = 192, 
+                           names = ['index', 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20], # for temp settings 
+                           warn_bad_lines = True,  # if not all columns are read in
+                           skipinitialspace = True )  # skip space after delimiter
+
+    gcode_df = gcode_df.dropna(axis=1, how='all')
+    gcode_df = gcode_df.replace({';   ': ''}, regex = True)  # cut off left spaces
+    gcode_df = gcode_df.set_index('index')
     return gcode_df
 
-def read_protocoll(filepath):
-    '''reads out FFF protocoll'''
+def import_gcode_stats(filepath):
+    '''Reads out gcode stats given at the end of the gcode as comment (Simplify3D)'''
     import pandas as pd
-    protocoll_df = pd.read_csv(filepath, sep=';', skiprows=1, skipinitialspace=True )
-    protocoll_df = protocoll_df.set_index('Druckjob')
-    #protocoll_df = protocoll_df.set_index('')
-    return protocoll_df
+    with open(filepath) as f:
+        row_number = sum(1 for line in f)  # count number of lines in gcode
+    build_stats = pd.read_csv(filepath, sep = ':', 
+                           skiprows = row_number-5,  # read only last 5 lines 
+                           nrows = 192, 
+                           names = ['index', 'value'], # for temp settings 
+                           warn_bad_lines = True,  # if not all columns are read in
+                           skipinitialspace = True )  # skip space after delimiter
+    build_stats = build_stats.replace({';   ': ''}, regex = True)
+    build_stats = build_stats.set_index('index')
+    return build_stats
+
+def delete_rows_with_gcodescripts(dataframe):
+    '''Find rows where index contains the string Gcode and drop them'''
+    dataframe_new = dataframe.drop(index = dataframe.index[dataframe.index.str.contains('Gcode')])
+    return dataframe_new
+
+# =============================================================================
+# TODO
+# =============================================================================
+def rearrange_temperature_data(dataframe):
+    '''Find rows containing temperature data. make new row for each left right, bed or chamber params.
+    '''
+    dataframe_temperature = gcode.index[gcode.index.str.contains('temperature')]
+    
+    return dataframe_new
+
+
+def import_protocol(filepath, sheet_name='V2'):
+    '''read excel sheet "sheet_name" and return as pandas dataframe'''
+    import pandas as pd
+    protocoll_dataframe = pd.read_excel(filepath, 
+                                        sheet_name=sheet_name, 
+                                        header=1, 
+                                        index_col=1, 
+                                        usecols='A:AU')
+    return protocoll_dataframe
+
 
 def clean_gcodesnippets(df):
     '''cleans out gcode snippets from dataframe'''
-    import pandas as pd
     gcode_df = df.drop(['startingGcode','layerChangeGcode', 'retractionGcode', 'toolChangeGcode', 'endingGcode', 'firmwareTypeOverride'])
     return gcode_df
 
+
 def choose_main_nozzle(df):
     '''select main nozzle based on chosen setup profile in Simplify3D V4.0 gcode'''
-    import pandas as pd
     if df.loc['primaryExtruder'][0]==0:
         main_extruder_column = 'a'
     if df.loc['primaryExtruder'][0]==1:
@@ -83,7 +114,6 @@ def append_temp(df):
 
 def reduce_to_main_nozzle(df):
     ''' reduces gcode columns (4) to only first column, copy main nozzle in first column first'''
-    import pandas as pd
     main_noz = choose_main_nozzle(df)
     if main_noz == 'b':
         df.loc['extruderName':'extruderWipeDistance','a'] = df.loc['extruderName':'extruderWipeDistance', 'b']
@@ -104,7 +134,6 @@ def start_gcode_df_blanc(filepath, namelist):
 
 def insert_gcode_df_data(filepath, df, i):
     '''Get gcode data and export values as array'''
-    import pandas as pd
     gcode_df        = read_gcode(filepath[i])
     #gcode_df        = clean_gcodesnippets(gcode_df)
     gcode_df        = append_temp(gcode_df)
