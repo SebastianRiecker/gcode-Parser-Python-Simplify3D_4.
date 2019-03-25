@@ -28,6 +28,23 @@ transfer_stats.hist(column = 'duration')
 #gcx = gc.iloc[60:80]
 #ar = data_array[20:80]
 
+# OPTIMIZATION
+    # look at first 5 elements of row in dataframe: [1:5] - thats where the parameters are
+for rownumber in np.arange(len(data_array)): 
+    rel_range = [1,2,3,4,5]
+    for i in rel_range:  # all columns except command
+        input_cell = dataframe.iloc[rownumber, i]
+        if input_cell != '0':
+            command_val = float(input_cell[1:])
+            command_char = input_cell[0]
+            array_position = column_names.index(command_char)
+            data_array[rownumber, array_position] = command_val
+ 
+           
+        picked_cell = dataframe.iloc[rownumber,1:5][dataframe.iloc[rownumber,1:5].str.contains(column_names[i])]
+        if not picked_cell.empty:
+            data_array[rownumber, i] = get_command_parametervalue(picked_cell[0])  # [0] to get value, not series-element
+    
 
 # TIMEIT
 
@@ -47,14 +64,6 @@ def import_gcode(filepath, column_names):
                            names = column_names)
     gcode_df = gcode_df.fillna('0')
     return gcode_df
-
-def get_command_parametervalue(parameter_str):
-    GM = ['G', 'M']  # check that is not command but parameter
-    if any(x in parameter_str for x in GM):
-        command_value = parameter_str
-    else:
-        command_value = float(parameter_str[1:])
-    return command_value
     
 dataframe = import_gcode(path, column_names)
 
@@ -66,11 +75,37 @@ data_array = np.zeros([len(dataframe), len(column_names)]) # without command col
 
 test = '''\
 for rownumber in np.arange(len(data_array)): 
-    for i in rel_index:  # all columns except command
-        picked_cell = dataframe.iloc[rownumber,1:5][dataframe.iloc[rownumber,1:5].str.contains(column_names[i])]
-        #if not picked_cell.empty:
-            #data_array[rownumber, i] = get_command_parametervalue(picked_cell[0])  # [0] to get value, not series-element
+    rel_range = [1,2,3,4,5]  # relevant lookup positions in dataframe
+    for i in rel_range:  # all columns except command
+        input_cell = dataframe.iloc[rownumber, i]
+        if input_cell != '0':
+            try:
+                data_array[rownumber, column_names.index(input_cell[0])] = float(input_cell[1:])
+            except ValueError:
+                pass  # if not in clumn_names, then no assignment necessary
 '''
 
 t = timeit.timeit(stmt = test, setup = setupx, number = 1)
 print(t)
+
+
+setupx = '''\
+import numpy as np
+a = np.arange(100).reshape(10,10)
+'''
+
+test = '''\
+
+
+x = a[(2*3),(2*4)]
+'''
+
+test = '''\
+p1 = 2*3
+p2 = 2*4
+x = a[p1,p2]
+'''
+
+t = timeit.timeit(stmt = test, setup = setupx, number = 1000000)
+print(t)
+

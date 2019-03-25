@@ -45,12 +45,25 @@ def generate_sorted_dataframe(dataframe, column_names):
     data_array = np.zeros([len(dataframe), len(column_names)]) # without command column (-1)
     
     # look at first 5 elements of row in dataframe: [1:5] - thats where the parameters are
+# =============================================================================
+#     for rownumber in np.arange(len(data_array)): 
+#         for i in rel_index:  # all columns except command
+#             picked_cell = dataframe.iloc[rownumber,1:5][dataframe.iloc[rownumber,1:5].str.contains(column_names[i])]
+#             if not picked_cell.empty:
+#                 data_array[rownumber, i] = get_command_parametervalue(picked_cell[0])  # [0] to get value, not series-element
+# =============================================================================
     for rownumber in np.arange(len(data_array)): 
-        for i in rel_index:  # all columns except command
-            picked_cell = dataframe.iloc[rownumber,1:5][dataframe.iloc[rownumber,1:5].str.contains(column_names[i])]
-            if not picked_cell.empty:
-                data_array[rownumber, i] = get_command_parametervalue(picked_cell[0])  # [0] to get value, not series-element
-    
+        rel_range = [1,2,3,4,5]  # relevant lookup positions in dataframe
+        for i in rel_range:  # all columns except command
+            input_cell = dataframe.iloc[rownumber, i]
+            if input_cell != '0':
+                command_val = float(input_cell[1:])
+                command_char = input_cell[0]
+                try:
+                    array_position = column_names.index(command_char)
+                    data_array[rownumber, array_position] = command_val
+                except ValueError:  # Error if Character not in column_names
+                    pass  # if not in clumn_names, then no assignment necessary
 
     add_set_parametervalues(data_array, column_names.index('F')) 
     add_set_parametervalues(data_array, column_names.index('Z'))
@@ -124,3 +137,4 @@ def get_transfer_stats(dataframe):
     
     df_result_sum = transfer_rows.groupby(['command_group']).sum()
     return df_result_sum
+
