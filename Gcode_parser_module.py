@@ -67,7 +67,7 @@ def generate_sorted_dataframe(dataframe, column_names):
 
     add_set_parametervalues(data_array, column_names.index('F')) 
     add_set_parametervalues(data_array, column_names.index('Z'))
-    assign_layer_number(data_array, column_names.index('Z'), column_names.index('layer'))
+    assign_layer_number(data_array, column_names.index('Z'), column_names.index('E'), column_names.index('layer'))
     assign_length(data_array, column_names.index('X'), column_names.index('Y'), column_names.index('Z'), column_names.index('length'))
     assign_duration(data_array, column_names.index('length'), column_names.index('F'), column_names.index('duration'))
     assign_command_group(data_array, dataframe, column_names.index('command_group'))
@@ -120,21 +120,26 @@ def assign_command_group(array, dataframe, col_write):
         last_command = dataframe.loc[i, 'command']
 
      
-def assign_layer_number(array, col_z, col_write):
+def assign_layer_number(array, col_Z, col_E, col_write):
     '''Look at current z-height and assign layer number to col_write. '''
     last_z = 0
     layer_number = 0
     for row in array:
-        if row[col_z] > last_z:
+        z_bool = row[col_Z] > last_z
+        print_bool = row[col_E] > 0
+        if z_bool and print_bool:
             layer_number += 1
+            last_z = row[col_Z]
         row[col_write] = layer_number
-        last_z = row[col_z]      
+        
+              
         
         
-def get_transfer_stats(dataframe):
+def get_transfer_rows(dataframe):
     G1_rows = dataframe[dataframe.loc[:,'command'] == 'G1']
-    transfer_rows = G1_rows[G1_rows.loc[:,'E'] == 0]
-    
-    df_result_sum = transfer_rows.groupby(['command_group']).sum()
-    return df_result_sum
+    transfer_bool = G1_rows.loc[:,'E'] == 0
+    no_retraction_bool1 = G1_rows.loc[:,'X'] > 0
+    no_retraction_bool2 = G1_rows.loc[:,'Y'] > 0
+    transfer_rows = G1_rows[transfer_bool & no_retraction_bool1 & no_retraction_bool2]
+    return transfer_rows
 

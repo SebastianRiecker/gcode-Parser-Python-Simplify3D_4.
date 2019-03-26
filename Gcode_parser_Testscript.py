@@ -19,16 +19,25 @@ gc_sort = gpm.generate_sorted_dataframe(gc, column_names)
 
 # DATA ANALYSIS
 print('Print time: %0.2f min' %gc_sort['duration'].sum())
-transfer_stats = gpm.get_transfer_stats(gc_sort)
-transfer_stats.hist(column = 'length')
-transfer_stats.hist(column = 'duration')
-
+transfer_rows = gpm.get_transfer_rows(gc_sort)
+transfer_rows.plot(y = 'length', kind='hist', logy=True)
+transfer_rows.plot(y = 'duration', kind='hist', logy=True)
+transfer_rows.plot(x='layer', y='length', kind='scatter')
 
 #dataframe = gc
 #gcx = gc.iloc[60:80]
 #ar = data_array[20:80]
 
-# OPTIMIZATION
+
+
+
+
+
+
+# =============================================================================
+# # OPTIMIZATION
+# =============================================================================
+
     # look at first 5 elements of row in dataframe: [1:5] - thats where the parameters are
 for rownumber in np.arange(len(data_array)): 
     rel_range = [1,2,3,4,5]
@@ -46,7 +55,14 @@ for rownumber in np.arange(len(data_array)):
             data_array[rownumber, i] = get_command_parametervalue(picked_cell[0])  # [0] to get value, not series-element
     
 
-# TIMEIT
+
+
+
+
+
+# =============================================================================
+# # TIMEIT
+# =============================================================================
 
 import timeit
 
